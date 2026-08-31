@@ -1,9 +1,23 @@
 let games = [];
 
 async function load(){
-  const res = await fetch('/api/games'); games = await res.json();
-  renderGames('');
-  document.getElementById('game-search-input').addEventListener('input', event => renderGames(event.target.value));
+  const list = document.getElementById('list');
+  list.innerHTML = '<p class="empty-state">Oyunlar yükleniyor...</p>';
+
+  try {
+    const res = await fetch('/api/games?summary=1');
+    if (!res.ok) throw new Error(`API ${res.status}`);
+
+    const data = await res.json();
+    if (!Array.isArray(data)) throw new Error('Geçersiz API yanıtı');
+
+    games = data;
+    renderGames('');
+    document.getElementById('game-search-input').addEventListener('input', event => renderGames(event.target.value));
+  } catch (error) {
+    console.error('Oyunlar yüklenemedi:', error);
+    list.innerHTML = '<p class="empty-state">Oyunlar yüklenemedi. Lütfen sayfayı yenileyin.</p>';
+  }
 }
 
 function renderGames(query){

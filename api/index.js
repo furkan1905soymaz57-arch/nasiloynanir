@@ -70,15 +70,19 @@ function sortGames(games) {
   );
 }
 
-async function listGames() {
+async function listGames(summaryOnly = false) {
   if (supabase) {
-    const { data, error } = await supabase.from('games').select('*').order('title', { ascending: true, nullsFirst: false });
+    const columns = summaryOnly ? 'id,title,category' : '*';
+    const { data, error } = await supabase.from('games').select(columns).order('title', { ascending: true, nullsFirst: false });
     if (error) throw error;
     return sortGames(data || []);
   }
 
   const db = readDB();
-  return sortGames(db.games || []);
+  const games = summaryOnly
+    ? (db.games || []).map(({ id, title, category }) => ({ id, title, category }))
+    : (db.games || []);
+  return sortGames(games);
 }
 
 async function getGameById(id) {
@@ -150,7 +154,7 @@ async function deleteGame(id) {
 
 app.get('/api/games', async (req, res) => {
   try {
-    res.json(await listGames());
+    res.json(await listGames(req.query.summary === '1'));
   } catch (error) {
     console.error('LOAD_GAMES_ERROR', error);
     res.status(500).json({ error: 'Failed to load games' });
