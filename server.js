@@ -187,8 +187,10 @@ app.get('/api/games', async (req, res) => {
   try {
     const summaryOnly = req.query.summary === '1';
     const includeImages = req.query.images !== '0';
-    if (summaryOnly) {
+    if (summaryOnly && includeImages) {
       res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=86400');
+    } else {
+      res.setHeader('Cache-Control', 'no-store');
     }
     res.json(await listGames(summaryOnly, includeImages));
   } catch (error) {

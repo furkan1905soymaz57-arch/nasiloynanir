@@ -36,7 +36,7 @@ document.getElementById('logout-btn')?.addEventListener('click', async () => {
 async function refresh() {
   const items = document.getElementById('items');
   items.innerHTML = '<div class="card">Oyunlar yükleniyor...</div>';
-  const res = await fetch('/api/games?summary=1&images=0');
+  const res = await fetch('/api/games?summary=1&images=0', { cache: 'no-store' });
   if (!res.ok) {
     items.innerHTML = `<div class="card">Oyunlar yüklenemedi (${res.status}).</div>`;
     return;
