@@ -5,7 +5,6 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { nanoid } = require('nanoid');
 const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
@@ -95,7 +94,7 @@ async function getGameById(id) {
 
 async function createGame(payload) {
   const game = {
-    id: payload.id || nanoid(),
+    id: payload.id || crypto.randomUUID(),
     title: payload.title || 'Untitled',
     category: payload.category || 'general',
     content: payload.content || '',
