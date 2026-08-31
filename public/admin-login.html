@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Girişi</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at 88% 18%, rgba(44,196,190,.16), transparent 18%), radial-gradient(circle at 92% 78%, rgba(83,43,128,.2), transparent 22%), linear-gradient(90deg,#111a38 0%,#121d3a 48%,#06494d 100%);
+      font-family: Poppins, Trebuchet MS, Segoe UI, Arial, sans-serif;
+      color: #eef7ff;
+    }
+    .login-box {
+      width: min(420px, calc(100vw - 32px));
+      padding: 28px 24px 20px;
+      background: rgba(7, 22, 43, 0.8);
+      border: 1px solid rgba(66,230,196,.28);
+      border-radius: 16px;
+      box-shadow: 0 18px 42px rgba(0,0,0,.25);
+    }
+    .login-box h1 {
+      margin: 0 0 20px;
+      text-align: center;
+      font-size: 28px;
+      color: #f8fbff;
+    }
+    .login-form {
+      display: grid;
+      gap: 12px;
+    }
+    .login-form label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .2px;
+      color: #dceefe;
+    }
+    .login-form input {
+      width: 100%;
+      margin: 0;
+      padding: 11px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(66,230,196,.42);
+      background: rgba(4, 20, 35, 0.75);
+      color: #fff;
+      outline: none;
+      font: inherit;
+    }
+    .login-form input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(66,230,196,.15);
+    }
+    .login-form button {
+      margin-top: 8px;
+      border: none;
+      padding: 12px 16px;
+      border-radius: 8px;
+      background: linear-gradient(100deg,#41e6c0,#35c9ee);
+      color: #062326;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .login-status {
+      min-height: 18px;
+      margin-top: 8px;
+      color: #ffd978;
+      font-size: 12px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-box">
+    <h1>Admin Girişi</h1>
+    <form id="admin-login-form" class="login-form">
+      <div>
+        <label for="email">E-posta</label>
+        <input id="email" name="email" type="email" value="furkan1905soymaz57@gmail.com" required />
+      </div>
+      <div>
+        <label for="password">Şifre</label>
+        <input id="password" name="password" type="password" value="6216501560" required />
+      </div>
+      <button type="submit">Giriş Yap</button>
+      <div id="login-status" class="login-status" role="status" aria-live="polite"></div>
+    </form>
+  </div>
+
+  <script>
+    const form = document.getElementById('admin-login-form');
+    const status = document.getElementById('login-status');
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      status.textContent = 'Giriş kontrol ediliyor...';
+
+      try {
+        const response = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || 'Giriş başarısız.');
+        }
+
+        status.textContent = 'Giriş başarılı. Yönlendiriliyor...';
+        window.location.href = data.redirect || '/admin.html';
+      } catch (error) {
+        status.textContent = error.message || 'Giriş başarısız.';
+      }
+    });
+  </script>
+</body>
+</html>

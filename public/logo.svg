@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 220" role="img" aria-labelledby="title desc">
+  <title id="title">Nasıl Oynanır</title>
+  <desc id="desc">Oyun kartları, taç, satranç atı ve zarlarla hazırlanmış Nasıl Oynanır logosu</desc>
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe16a"/>
+      <stop offset="1" stop-color="#f28b00"/>
+    </linearGradient>
+    <linearGradient id="red" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff5151"/>
+      <stop offset="1" stop-color="#a60000"/>
+    </linearGradient>
+  </defs>
+  <path d="M78 171h484c-24 29-82 35-242 35S102 200 78 171Z" fill="#10151c" stroke="#050608" stroke-width="9"/>
+  <g fill="#fff" stroke="#0a0a0a" stroke-width="8">
+    <rect x="62" y="24" width="116" height="145" rx="15" transform="rotate(-22 62 24)"/>
+    <rect x="170" y="14" width="116" height="145" rx="15" transform="rotate(-12 170 14)"/>
+    <rect x="430" y="22" width="116" height="145" rx="15" transform="rotate(22 430 22)"/>
+  </g>
+  <g fill="#080808" font-family="Georgia,serif" font-size="48" font-weight="700">
+    <text x="92" y="78" transform="rotate(-22 92 78)">A</text>
+    <text x="215" y="73" transform="rotate(-12 215 73)">♠</text>
+  </g>
+  <text x="477" y="102" fill="#e32727" font-size="55" transform="rotate(22 477 102)">♥</text>
+  <path d="m260 63 30 28 31-58 35 59 38-59 26 58 37-27-16 91H278Z" fill="url(#gold)" stroke="#090909" stroke-width="9" stroke-linejoin="round"/>
+  <circle cx="321" cy="28" r="15" fill="#ffc321" stroke="#090909" stroke-width="8"/>
+  <circle cx="394" cy="28" r="15" fill="#ffc321" stroke="#090909" stroke-width="8"/>
+  <circle cx="457" cy="62" r="15" fill="#ffc321" stroke="#090909" stroke-width="8"/>
+  <path d="M132 153c5-32 21-52 43-52 23 0 35 21 38 52" fill="#12161a" stroke="#050608" stroke-width="9"/>
+  <path d="M167 111c-15-34 10-55 30-35 9 9 6 26-6 34l20 43h-62l17-40Z" fill="url(#red)" stroke="#050608" stroke-width="8"/>
+  <path d="M483 150c0-42 17-74 52-79 31-5 46 23 25 43 19 17 22 36 17 48Z" fill="#252a30" stroke="#050608" stroke-width="9"/>
+  <path d="M519 83c-8-20 8-36 27-44l-3 22 18-8c-5 21-18 31-42 30Z" fill="#252a30" stroke="#050608" stroke-width="8"/>
+  <text x="112" y="145" fill="#f7f7f7" font-family="Arial Black,Arial,sans-serif" font-size="55" font-weight="900" stroke="#050505" stroke-width="5" paint-order="stroke">NASIL</text>
+  <path d="M104 164h432" stroke="#050505" stroke-width="16" stroke-linecap="round"/>
+  <text x="118" y="198" fill="url(#gold)" font-family="Arial Black,Arial,sans-serif" font-size="35" font-weight="900" stroke="#080808" stroke-width="5" paint-order="stroke">OYNANIR</text>
+  <g transform="rotate(-12 332 169)">
+    <rect x="294" y="143" width="55" height="49" rx="8" fill="url(#red)" stroke="#090909" stroke-width="7"/>
+    <circle cx="310" cy="158" r="5" fill="#fff"/><circle cx="334" cy="176" r="5" fill="#fff"/><circle cx="342" cy="153" r="5" fill="#fff"/>
+  </g>
+</svg>

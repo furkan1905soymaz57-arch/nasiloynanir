@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Yönetici - Oyunlar</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="admin-page">
+  <header class="top">
+    <a class="brand" href="index.html" aria-label="Nasıl Oynanır ana sayfa">
+      <img src="logo.svg" alt="Nasıl Oynanır" />
+    </a>
+    <div class="top-actions">
+      <a class="btn admin-link" href="index.html"><span class="avatar" aria-hidden="true">♟</span>Siteyi Görüntüle</a>
+      <button class="btn admin-link" id="logout-btn" type="button"><span class="avatar" aria-hidden="true">⇠</span>Çıkış</button>
+    </div>
+  </header>
+  <main class="container admin-container">
+    <section class="panel admin-form-panel">
+      <h2>Yeni Oyun Ekle</h2>
+      <form id="form">
+        <input id="title" placeholder="Başlık" required />
+        <input id="category" placeholder="Kategori (örn: okey, tavla, kart)" />
+        <label for="content">Nasıl oynanır ve kurallar</label>
+        <textarea id="content" placeholder="Her satıra bir kural yazın.&#10;Örnek: Her oyuncu sırayla zar atar.&#10;Örnek: Tüm taşlarını ilk bitiren kazanır." rows="8"></textarea>
+        <small class="field-hint">Her satır, oyun sayfasında ayrı bir madde olarak gösterilir.</small>
+        <label for="image">Fotoğraf</label>
+        <input id="image" type="file" accept="image/*" />
+        <button type="submit" class="btn">Kaydet</button>
+        <div id="form-status" role="status" aria-live="polite"></div>
+      </form>
+    </section>
+    <section class="panel games-panel">
+      <h2>Mevcut Oyunlar</h2>
+      <input id="admin-game-search" type="search" placeholder="Oyun ara..." aria-label="Mevcut oyunlarda ara" />
+      <div id="items"></div>
+    </section>
+  </main>
+  <script src="admin.js"></script>
+</body>
+</html>

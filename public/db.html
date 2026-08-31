@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DB Görüntüleyici</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="index.html" aria-label="Nasıl Oynanır ana sayfa">
+      <img src="logo.svg" alt="Nasıl Oynanır" />
+    </a>
+    <a class="btn" href="admin.html">Yöneticiye Dön</a>
+  </header>
+  <main class="container" style="flex-direction:column;">
+    <section class="panel">
+      <h2>Oyunlar</h2>
+      <div id="controls" style="margin-bottom:12px">
+        <button id="refresh" class="btn">Yenile</button>
+      </div>
+      <div id="table"></div>
+    </section>
+  </main>
+  <script src="db.js"></script>
+</body>
+</html>

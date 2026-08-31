@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>İletişim ve Öneriler - Nasıl Oynanır</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="contact-page">
+  <header class="top">
+    <a class="brand" href="index.html" aria-label="Nasıl Oynanır ana sayfa">
+      <img src="logo.svg" alt="Nasıl Oynanır" />
+    </a>
+    <a class="btn admin-link" href="index.html"><span class="avatar" aria-hidden="true">⌂</span>Ana Sayfa</a>
+  </header>
+  <main class="container contact-main">
+    <section class="feedback-section" aria-labelledby="feedback-title">
+      <div class="feedback-intro">
+        <span class="section-kicker">Söz sende</span>
+        <h1 id="feedback-title">İletişim ve öneriler</h1>
+        <p>Yeni oyun önerilerini, düzeltmeleri veya aklındaki fikirleri bizimle paylaş.</p>
+        <p class="contact-note">E-posta: <a href="mailto:nasiloynanir57@gmail.com">nasiloynanir57@gmail.com</a></p>
+      </div>
+      <form id="feedback-form" class="feedback-form">
+        <label for="feedback-name">Adın</label>
+        <input id="feedback-name" name="name" type="text" placeholder="Adınız" autocomplete="name" />
+        <label for="feedback-message">Mesajın</label>
+        <textarea id="feedback-message" name="message" rows="6" placeholder="Önerinizi veya mesajınızı yazın..." required></textarea>
+        <button class="btn" type="submit">Mesaj gönder</button>
+        <p id="feedback-status" class="feedback-status" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+  </main>
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-about">
+        <a class="footer-brand" href="index.html">Nasıl Oynanır</a>
+        <p>Oyun kurallarını keşfet, öğren ve oyuna hemen başla.</p>
+      </div>
+      <div class="footer-column">
+        <h2>Hakkımızda</h2>
+        <p>Farklı oyunların kurallarını herkes için anlaşılır ve ulaşılabilir hale getiriyoruz.</p>
+      </div>
+      <div class="footer-column footer-links">
+        <h2>Bağlantılar</h2>
+        <a href="contact.html"><span aria-hidden="true">✉</span> İletişim ve öneriler</a>
+        <a href="https://www.instagram.com/furkansymz_/" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">◎</span> @furkansymz_</a>
+      </div>
+    </div>
+    <div class="footer-bottom"><span>© 2026 Nasıl Oynanır</span><span>Oyun severler için tasarlandı</span></div>
+  </footer>
+  <script src="contact.js"></script>
+</body>
+</html>
