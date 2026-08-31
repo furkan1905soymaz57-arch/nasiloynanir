@@ -5,7 +5,7 @@ async function load(){
   list.innerHTML = '<p class="empty-state">Oyunlar yükleniyor...</p>';
 
   try {
-    const res = await fetch('/api/games?summary=1');
+    const res = await fetch('/api/games?summary=1&images=0&fresh=1', { cache: 'no-store' });
     if (!res.ok) throw new Error(`API ${res.status}`);
 
     const data = await res.json();
@@ -30,8 +30,15 @@ function renderGames(query){
   list.innerHTML = filteredGames.length ? '' : `<p class="empty-state">${normalizedQuery ? 'Aramanızla eşleşen oyun bulunamadı.' : 'Henüz oyun eklenmemiş.'}</p>`;
   filteredGames.forEach(g=>{
     const el = document.createElement('a'); el.className='card'; el.href=`game.html?id=${encodeURIComponent(g.id)}`;
-    const image = g.image || fallbackImage(g.category);
-    el.innerHTML = `<img class="game-card-image" src="${escapeHtml(image)}" alt="${escapeHtml(g.title)}"><span class="game-card-body"><strong>${escapeHtml(g.title)}</strong><span class="game-category">${escapeHtml(g.category||'Oyun')}</span></span>`;
+    const image = `/api/games/${encodeURIComponent(g.id)}/image`;
+    el.innerHTML = `<img class="game-card-image" src="${escapeHtml(image)}" data-fallback="${escapeHtml(fallbackImage(g.category))}" loading="lazy" decoding="async" alt="${escapeHtml(g.title)}"><span class="game-card-body"><strong>${escapeHtml(g.title)}</strong><span class="game-category">${escapeHtml(g.category||'Oyun')}</span></span>`;
+    const imageElement = el.querySelector('.game-card-image');
+    imageElement.addEventListener('error', () => {
+      if (imageElement.dataset.fallback) {
+        imageElement.src = imageElement.dataset.fallback;
+        delete imageElement.dataset.fallback;
+      }
+    });
     list.appendChild(el);
   })
 }

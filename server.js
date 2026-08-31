@@ -128,6 +128,23 @@ async function getGameById(id) {
   return (db.games || []).find(game => game.id === id) || null;
 }
 
+async function getGameImage(id) {
+  if (supabase) {
+    const { data, error } = await supabase
+      .from('games')
+      .select('image')
+      .eq('id', id)
+      .single()
+      .abortSignal(AbortSignal.timeout(25000));
+    if (!error) return data?.image || '';
+    if (error.code === 'PGRST116') return null;
+    console.warn('GET_GAME_IMAGE_FALLBACK', error.message || error);
+  }
+
+  const db = readDB();
+  return (db.games || []).find(game => game.id === id)?.image || null;
+}
+
 async function createGame(payload) {
   const game = {
     id: payload.id || crypto.randomUUID(),
@@ -215,6 +232,31 @@ app.get('/api/games', async (req, res) => {
   } catch (error) {
     console.error('LOAD_GAMES_ERROR', error);
     res.status(500).json({ error: 'Oyunlar Supabase üzerinden yüklenemedi.', details: error.message });
+  }
+});
+
+app.get('/api/games/:id/image', async (req, res) => {
+  try {
+    const image = await getGameImage(req.params.id);
+    if (!image) return res.status(404).end();
+
+    if (/^https?:\/\//i.test(image)) {
+      res.setHeader('Cache-Control', 'no-store');
+      return res.redirect(image);
+    }
+
+    const match = image.match(/^data:([^;,]+);base64,(.+)$/s);
+    if (!match) return res.status(415).end();
+
+    const mimeType = /^image\/[a-z0-9.+-]+$/i.test(match[1]) ? match[1] : 'application/octet-stream';
+    const body = Buffer.from(match[2], 'base64');
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Length', body.length);
+    res.setHeader('Cache-Control', 'no-store');
+    return res.send(body);
+  } catch (error) {
+    console.error('GET_GAME_IMAGE_ERROR', error);
+    return res.status(500).end();
   }
 });
 
