@@ -36,9 +36,10 @@ document.getElementById('logout-btn')?.addEventListener('click', async () => {
 async function refresh() {
   const items = document.getElementById('items');
   items.innerHTML = '<div class="card">Oyunlar yükleniyor...</div>';
-  const res = await fetch('/api/games?summary=1&images=0', { cache: 'no-store' });
+  const res = await fetch('/api/games?summary=1&images=0&fresh=1', { cache: 'no-store' });
   if (!res.ok) {
-    items.innerHTML = `<div class="card">Oyunlar yüklenemedi (${res.status}).</div>`;
+    const error = await readApiError(res);
+    items.innerHTML = `<div class="card">${escapeHtml(error)}</div>`;
     return;
   }
   const games = await res.json();
@@ -71,6 +72,7 @@ async function refresh() {
       }
       populate(await response.json());
       status.textContent = 'Düzenleme için hazır.';
+      document.querySelector('.admin-form-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       document.getElementById('title').focus();
     };
     const del = document.createElement('button'); del.textContent = 'Sil'; del.className = 'small-btn danger';
@@ -78,9 +80,10 @@ async function refresh() {
       if (!confirm('Silinsin mi?')) return;
       const response = await fetch('/api/games/' + encodeURIComponent(g.id), { method: 'DELETE' });
       if (!response.ok) {
-        document.getElementById('form-status').textContent = `Silme başarısız (${response.status}).`;
+        document.getElementById('form-status').textContent = await readApiError(response);
         return;
       }
+      document.getElementById('form-status').textContent = 'Oyun silindi.';
       await refresh();
     };
     actions.appendChild(edit); actions.appendChild(del); el.appendChild(actions); items.appendChild(el);
@@ -94,6 +97,8 @@ form.addEventListener('submit', async e => {
   e.preventDefault();
   const status = document.getElementById('form-status');
   status.textContent = 'Kaydediliyor...';
+  const submitButton = form.querySelector('button[type="submit"]');
+  submitButton.disabled = true;
   try {
     const title = document.getElementById('title').value; const category = document.getElementById('category').value; const content = document.getElementById('content').value;
     const imageFile = document.getElementById('image').files[0];
@@ -101,15 +106,26 @@ form.addEventListener('submit', async e => {
     const payload = { title, category, content };
     if (image) payload.image = image;
     const response = await fetch(editId ? '/api/games/' + editId : '/api/games', { method: editId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-    if (!response.ok) throw new Error(`Sunucu hatası: ${response.status}`);
+    if (!response.ok) throw new Error(await readApiError(response));
     editId = null;
     form.reset();
     status.textContent = 'Oyun başarıyla kaydedildi.';
     await refresh();
   } catch (error) {
     status.textContent = `Kayıt başarısız: ${error.message}`;
+  } finally {
+    submitButton.disabled = false;
   }
 })
+
+async function readApiError(response) {
+  try {
+    const data = await response.json();
+    return [data.error, data.details].filter(Boolean).join(' ' ) || `Sunucu hatası: ${response.status}`;
+  } catch (error) {
+    return `Sunucu hatası: ${response.status}`;
+  }
+}
 
 function readImage(file) {
   return new Promise((resolve, reject) => {

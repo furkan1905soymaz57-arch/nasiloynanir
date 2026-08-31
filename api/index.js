@@ -91,17 +91,18 @@ function sortGames(games) {
   );
 }
 
-async function listGames(summaryOnly = false, includeImages = true) {
+async function listGames(summaryOnly = false, includeImages = true, options = {}) {
+  const { allowFallback = true, timeoutMs = 5000 } = options;
   if (supabase) {
     const columns = summaryOnly
       ? (includeImages ? 'id,title,category,image' : 'id,title,category')
       : '*';
     let query = supabase.from('games').select(columns).order('title', { ascending: true, nullsFirst: false });
-    if (summaryOnly) query = query.abortSignal(AbortSignal.timeout(5000));
+    if (summaryOnly && timeoutMs) query = query.abortSignal(AbortSignal.timeout(timeoutMs));
 
     const { data, error } = await query;
     if (!error) return sortGames(data || []);
-    if (!summaryOnly) throw error;
+    if (!summaryOnly || !allowFallback) throw error;
 
     console.warn('SUMMARY_GAMES_FALLBACK', error.message || error);
   }
@@ -142,7 +143,11 @@ async function createGame(payload) {
   };
 
   if (supabase) {
-    const { data, error } = await supabase.from('games').insert([game]).select().single();
+    const { data, error } = await supabase
+      .from('games')
+      .insert([game])
+      .select('id,title,category,content')
+      .single();
     if (error) throw error;
     return data;
   }
@@ -156,7 +161,12 @@ async function createGame(payload) {
 
 async function updateGame(id, payload) {
   if (supabase) {
-    const { data, error } = await supabase.from('games').update(payload).eq('id', id).select().single();
+    const { data, error } = await supabase
+      .from('games')
+      .update(payload)
+      .eq('id', id)
+      .select('id,title,category,content')
+      .single();
     if (error) throw error;
     return data;
   }
@@ -173,7 +183,12 @@ async function updateGame(id, payload) {
 
 async function deleteGame(id) {
   if (supabase) {
-    const { data, error } = await supabase.from('games').delete().eq('id', id).select().single();
+    const { data, error } = await supabase
+      .from('games')
+      .delete()
+      .eq('id', id)
+      .select('id')
+      .single();
     if (error) throw error;
     return data;
   }
@@ -192,15 +207,19 @@ app.get('/api/games', async (req, res) => {
   try {
     const summaryOnly = req.query.summary === '1';
     const includeImages = req.query.images !== '0';
-    if (summaryOnly && includeImages) {
+    const fresh = req.query.fresh === '1';
+    if (summaryOnly && includeImages && !fresh) {
       res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=86400');
     } else {
       res.setHeader('Cache-Control', 'no-store');
     }
-    res.json(await listGames(summaryOnly, includeImages));
+    res.json(await listGames(summaryOnly, includeImages, {
+      allowFallback: !fresh,
+      timeoutMs: fresh ? 25000 : 5000,
+    }));
   } catch (error) {
     console.error('LOAD_GAMES_ERROR', error);
-    res.status(500).json({ error: 'Failed to load games' });
+    res.status(500).json({ error: 'Oyunlar Supabase üzerinden yüklenemedi.', details: error.message });
   }
 });
 
@@ -226,7 +245,7 @@ app.post('/api/games', requireAdmin, async (req, res) => {
     res.json(game);
   } catch (error) {
     console.error('CREATE_GAME_ERROR', error);
-    res.status(500).json({ error: 'Failed to create game' });
+    res.status(500).json({ error: 'Oyun eklenemedi.', details: error.message });
   }
 });
 
@@ -237,7 +256,7 @@ app.put('/api/games/:id', requireAdmin, async (req, res) => {
     res.json(game);
   } catch (error) {
     console.error('UPDATE_GAME_ERROR', error);
-    res.status(500).json({ error: 'Failed to update game' });
+    res.status(500).json({ error: 'Oyun güncellenemedi.', details: error.message });
   }
 });
 
@@ -248,7 +267,7 @@ app.delete('/api/games/:id', requireAdmin, async (req, res) => {
     res.json(removed);
   } catch (error) {
     console.error('DELETE_GAME_ERROR', error);
-    res.status(500).json({ error: 'Failed to delete game' });
+    res.status(500).json({ error: 'Oyun silinemedi.', details: error.message });
   }
 });
 
