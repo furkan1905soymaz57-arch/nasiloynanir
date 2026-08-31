@@ -11,10 +11,20 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@supabase/supabase-js": "^2.52.0",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "express": "^4.18.2",
-    "nanoid": "^4.0.0"
-  }
+    "@supabase/supabase-js": "^2.112.4",
+    "cors": "^2.8.6",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.2",
+    "nanoid": "^4.0.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/furkan1905soymaz57-arch/nasiloynanir.git"
+  },
+  "keywords": [],
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/furkan1905soymaz57-arch/nasiloynanir/issues"
+  },
+  "homepage": "https://github.com/furkan1905soymaz57-arch/nasiloynanir#readme"
 }
