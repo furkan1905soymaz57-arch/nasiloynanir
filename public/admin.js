@@ -34,7 +34,18 @@ document.getElementById('logout-btn')?.addEventListener('click', async () => {
 })();
 
 async function refresh() {
-  const res = await fetch('/api/games'); const games = await res.json();
+  const items = document.getElementById('items');
+  items.innerHTML = '<div class="card">Oyunlar yükleniyor...</div>';
+  const res = await fetch('/api/games?summary=1&images=0');
+  if (!res.ok) {
+    items.innerHTML = `<div class="card">Oyunlar yüklenemedi (${res.status}).</div>`;
+    return;
+  }
+  const games = await res.json();
+  if (!Array.isArray(games)) {
+    items.innerHTML = '<div class="card">Geçersiz sunucu yanıtı.</div>';
+    return;
+  }
   const query = (searchInput?.value || '').trim().toLocaleLowerCase('tr-TR');
   const filteredGames = [...games]
     .filter(game => {
@@ -44,16 +55,34 @@ async function refresh() {
     })
     .sort((first, second) => first.title.localeCompare(second.title, 'tr', { sensitivity: 'base' }));
 
-  const items = document.getElementById('items'); items.innerHTML = '';
+  items.innerHTML = '';
   filteredGames.forEach(g => {
     const el = document.createElement('div'); el.className = 'card';
-    const image = g.image ? `<img class="admin-game-image" src="${escapeHtml(g.image)}" alt="${escapeHtml(g.title)}">` : '';
-    el.innerHTML = `<div class="admin-game-info">${image}<span><strong>${escapeHtml(g.title)}</strong><small>${escapeHtml(g.category || '')}</small></span></div>`;
+    el.innerHTML = `<div class="admin-game-info"><span><strong>${escapeHtml(g.title)}</strong><small>${escapeHtml(g.category || '')}</small></span></div>`;
     const actions = document.createElement('div'); actions.className = 'item-actions';
     const edit = document.createElement('button'); edit.textContent = 'Düzenle'; edit.className = 'small-btn';
-    edit.onclick = () => populate(g);
+    edit.onclick = async () => {
+      const status = document.getElementById('form-status');
+      status.textContent = 'Oyun yükleniyor...';
+      const response = await fetch('/api/games/' + encodeURIComponent(g.id));
+      if (!response.ok) {
+        status.textContent = `Oyun yüklenemedi (${response.status}).`;
+        return;
+      }
+      populate(await response.json());
+      status.textContent = 'Düzenleme için hazır.';
+      document.getElementById('title').focus();
+    };
     const del = document.createElement('button'); del.textContent = 'Sil'; del.className = 'small-btn danger';
-    del.onclick = async () => { if (!confirm('Silinsin mi?')) return; await fetch('/api/games/' + g.id, { method: 'DELETE' }); refresh(); }
+    del.onclick = async () => {
+      if (!confirm('Silinsin mi?')) return;
+      const response = await fetch('/api/games/' + encodeURIComponent(g.id), { method: 'DELETE' });
+      if (!response.ok) {
+        document.getElementById('form-status').textContent = `Silme başarısız (${response.status}).`;
+        return;
+      }
+      await refresh();
+    };
     actions.appendChild(edit); actions.appendChild(del); el.appendChild(actions); items.appendChild(el);
   })
 }
@@ -85,12 +114,23 @@ form.addEventListener('submit', async e => {
 function readImage(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
+    reader.onload = () => {
+      const image = new Image();
+      image.onload = () => {
+        const maxDimension = 1600;
+        const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(image.width * scale));
+        canvas.height = Math.max(1, Math.round(image.height * scale));
+        canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.9));
+      };
+      image.onerror = reject;
+      image.src = reader.result;
+    };
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
 }
 
 function populate(g) { editId = g.id; document.getElementById('title').value = g.title || ''; document.getElementById('category').value = g.category || ''; document.getElementById('content').value = g.content || '' }
-
-refresh()

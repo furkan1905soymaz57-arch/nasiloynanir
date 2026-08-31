@@ -86,9 +86,11 @@ function sortGames(games) {
   );
 }
 
-async function listGames(summaryOnly = false) {
+async function listGames(summaryOnly = false, includeImages = true) {
   if (supabase) {
-    const columns = summaryOnly ? 'id,title,category,image' : '*';
+    const columns = summaryOnly
+      ? (includeImages ? 'id,title,category,image' : 'id,title,category')
+      : '*';
     let query = supabase.from('games').select(columns).order('title', { ascending: true, nullsFirst: false });
     if (summaryOnly) query = query.abortSignal(AbortSignal.timeout(5000));
 
@@ -101,16 +103,24 @@ async function listGames(summaryOnly = false) {
 
   const db = readDB();
   const games = summaryOnly
-    ? (db.games || []).map(({ id, title, category, image }) => ({ id, title, category, image }))
+    ? (db.games || []).map(({ id, title, category, image }) => (
+        includeImages ? { id, title, category, image } : { id, title, category }
+      ))
     : (db.games || []);
   return sortGames(games);
 }
 
 async function getGameById(id) {
   if (supabase) {
-    const { data, error } = await supabase.from('games').select('*').eq('id', id).single();
-    if (error && error.code !== 'PGRST116') throw error;
-    return data || null;
+    const { data, error } = await supabase
+      .from('games')
+      .select('*')
+      .eq('id', id)
+      .single()
+      .abortSignal(AbortSignal.timeout(5000));
+    if (!error) return data || null;
+    if (error.code === 'PGRST116') return null;
+    console.warn('GET_GAME_FALLBACK', error.message || error);
   }
 
   const db = readDB();
@@ -176,10 +186,11 @@ async function deleteGame(id) {
 app.get('/api/games', async (req, res) => {
   try {
     const summaryOnly = req.query.summary === '1';
+    const includeImages = req.query.images !== '0';
     if (summaryOnly) {
       res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=86400');
     }
-    res.json(await listGames(summaryOnly));
+    res.json(await listGames(summaryOnly, includeImages));
   } catch (error) {
     console.error('LOAD_GAMES_ERROR', error);
     res.status(500).json({ error: 'Failed to load games' });
@@ -197,7 +208,12 @@ app.get('/api/games/:id', async (req, res) => {
   }
 });
 
-app.post('/api/games', async (req, res) => {
+function requireAdmin(req, res, next) {
+  if (!isAdminAuthenticated(req)) return res.status(401).json({ error: 'Unauthorized' });
+  next();
+}
+
+app.post('/api/games', requireAdmin, async (req, res) => {
   try {
     const game = await createGame(req.body || {});
     res.json(game);
@@ -207,7 +223,7 @@ app.post('/api/games', async (req, res) => {
   }
 });
 
-app.put('/api/games/:id', async (req, res) => {
+app.put('/api/games/:id', requireAdmin, async (req, res) => {
   try {
     const game = await updateGame(req.params.id, req.body || {});
     if (!game) return res.status(404).json({ error: 'Not found' });
@@ -218,7 +234,7 @@ app.put('/api/games/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/games/:id', async (req, res) => {
+app.delete('/api/games/:id', requireAdmin, async (req, res) => {
   try {
     const removed = await deleteGame(req.params.id);
     if (!removed) return res.status(404).json({ error: 'Not found' });
