@@ -12,10 +12,10 @@ app.use(cors());
 app.use(express.json({ limit: '5mb' }));
 
 const DB_PATH = path.join(process.cwd(), 'db.json');
-const ADMIN_EMAIL = 'furkan1905soymaz57@gmail.com';
-const ADMIN_PASSWORD = '6216501560';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'furkan1905soymaz57@gmail.com';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '6216501560';
+const ADMIN_SESSION_SECRET = process.env.ADMIN_SESSION_SECRET || ADMIN_PASSWORD;
 const ADMIN_PATH = '/adminfako57';
-const adminSessions = new Map();
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -38,11 +38,32 @@ function getCookieValue(req, cookieName) {
   return decodeURIComponent(value);
 }
 
+function createAdminSessionToken() {
+  const payload = Buffer.from(JSON.stringify({
+    email: ADMIN_EMAIL.toLowerCase(),
+    expiresAt: Date.now() + 86400000,
+  })).toString('base64url');
+  const signature = crypto.createHmac('sha256', ADMIN_SESSION_SECRET).update(payload).digest('hex');
+  return `${payload}.${signature}`;
+}
+
 function isAdminAuthenticated(req) {
-  const sessionToken = getCookieValue(req, 'admin_session');
-  if (!sessionToken) return false;
-  const session = adminSessions.get(sessionToken);
-  return Boolean(session && session.email === ADMIN_EMAIL);
+  try {
+    const sessionToken = getCookieValue(req, 'admin_session');
+    if (!sessionToken) return false;
+
+    const [payload, signature] = sessionToken.split('.');
+    if (!payload || !signature) return false;
+    const expectedSignature = crypto.createHmac('sha256', ADMIN_SESSION_SECRET).update(payload).digest('hex');
+    const received = Buffer.from(signature);
+    const expected = Buffer.from(expectedSignature);
+    if (received.length !== expected.length || !crypto.timingSafeEqual(received, expected)) return false;
+
+    const session = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    return session.email === ADMIN_EMAIL.toLowerCase() && Number(session.expiresAt) > Date.now();
+  } catch (error) {
+    return false;
+  }
 }
 
 function readDB() {
@@ -72,15 +93,20 @@ function sortGames(games) {
 
 async function listGames(summaryOnly = false) {
   if (supabase) {
-    const columns = summaryOnly ? 'id,title,category' : '*';
-    const { data, error } = await supabase.from('games').select(columns).order('title', { ascending: true, nullsFirst: false });
-    if (error) throw error;
-    return sortGames(data || []);
+    const columns = summaryOnly ? 'id,title,category,image' : '*';
+    let query = supabase.from('games').select(columns).order('title', { ascending: true, nullsFirst: false });
+    if (summaryOnly) query = query.abortSignal(AbortSignal.timeout(5000));
+
+    const { data, error } = await query;
+    if (!error) return sortGames(data || []);
+    if (!summaryOnly) throw error;
+
+    console.warn('SUMMARY_GAMES_FALLBACK', error.message || error);
   }
 
   const db = readDB();
   const games = summaryOnly
-    ? (db.games || []).map(({ id, title, category }) => ({ id, title, category }))
+    ? (db.games || []).map(({ id, title, category, image }) => ({ id, title, category, image }))
     : (db.games || []);
   return sortGames(games);
 }
@@ -154,7 +180,11 @@ async function deleteGame(id) {
 
 app.get('/api/games', async (req, res) => {
   try {
-    res.json(await listGames(req.query.summary === '1'));
+    const summaryOnly = req.query.summary === '1';
+    if (summaryOnly) {
+      res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=86400');
+    }
+    res.json(await listGames(summaryOnly));
   } catch (error) {
     console.error('LOAD_GAMES_ERROR', error);
     res.status(500).json({ error: 'Failed to load games' });
@@ -212,10 +242,10 @@ app.post('/api/admin/login', (req, res) => {
     return res.status(401).json({ error: 'E-posta veya şifre yanlış.' });
   }
 
-  const sessionToken = crypto.randomBytes(32).toString('hex');
-  adminSessions.set(sessionToken, { email: ADMIN_EMAIL, createdAt: Date.now() });
+  const sessionToken = createAdminSessionToken();
+  const secureCookie = req.headers['x-forwarded-proto'] === 'https' || process.env.NODE_ENV === 'production';
 
-  res.setHeader('Set-Cookie', `admin_session=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`);
+  res.setHeader('Set-Cookie', `admin_session=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400${secureCookie ? '; Secure' : ''}`);
   return res.json({ ok: true, redirect: '/admin.html' });
 });
 
@@ -225,8 +255,6 @@ app.get('/api/admin/session', (req, res) => {
 });
 
 app.post('/api/admin/logout', (req, res) => {
-  const sessionToken = getCookieValue(req, 'admin_session');
-  if (sessionToken) adminSessions.delete(sessionToken);
   res.clearCookie('admin_session', { path: '/' });
   res.json({ ok: true });
 });
