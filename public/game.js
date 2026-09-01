@@ -1,16 +1,47 @@
 const detail = document.getElementById('game-detail');
 const gameId = new URLSearchParams(window.location.search).get('id');
 
+function readPreviewGame() {
+  try {
+    const raw = sessionStorage.getItem('furkan-game-preview');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !parsed.id) return null;
+    return parsed;
+  } catch (error) {
+    return null;
+  }
+}
+
+function renderGame(game) {
+  const image = game.image || fallbackImage(game.category);
+  document.title = `${game.title} - Oyun Kuralları`;
+  detail.innerHTML = `<article class="game-detail"><img class="game-detail-image" src="${escapeHtml(image)}" alt="${escapeHtml(game.title)}"><div class="game-detail-content"><div class="meta">${escapeHtml(game.category || 'Oyun')}</div><h2>${escapeHtml(game.title)}</h2><h3>Nasıl oynanır ve kurallar</h3><div class="content">${formatRules(game.content || '')}</div></div></article>`;
+}
+
 async function loadGame(){
   if(!gameId){ showError('Oyun bulunamadı.'); return; }
+
+  const previewGame = readPreviewGame();
+  if (previewGame && previewGame.id === gameId) {
+    renderGame(previewGame);
+  }
+
   try{
     const response = await fetch(`/api/games/${encodeURIComponent(gameId)}`);
     if(!response.ok) throw new Error('Oyun bulunamadı.');
     const game = await response.json();
-    const image = game.image || fallbackImage(game.category);
-    document.title = `${game.title} - Oyun Kuralları`;
-    detail.innerHTML = `<article class="game-detail"><img class="game-detail-image" src="${escapeHtml(image)}" alt="${escapeHtml(game.title)}"><div class="game-detail-content"><div class="meta">${escapeHtml(game.category || 'Oyun')}</div><h2>${escapeHtml(game.title)}</h2><h3>Nasıl oynanır ve kurallar</h3><div class="content">${formatRules(game.content)}</div></div></article>`;
-  }catch(error){ showError(error.message); }
+    sessionStorage.setItem('furkan-game-preview', JSON.stringify({
+      id: game.id,
+      title: game.title || 'Oyun',
+      category: game.category || 'Oyun',
+      image: game.image || fallbackImage(game.category),
+      content: game.content || '',
+    }));
+    renderGame(game);
+  }catch(error){
+    if (!previewGame || previewGame.id !== gameId) showError(error.message);
+  }
 }
 
 function formatRules(content){

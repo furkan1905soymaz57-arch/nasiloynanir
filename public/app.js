@@ -81,6 +81,28 @@ async function load(){
   }
 }
 
+function getInitialPriorityCount(totalCount) {
+  const viewportEstimate = Math.max(8, Math.ceil(window.innerHeight / 210));
+  return Math.min(totalCount, Math.max(12, viewportEstimate * 2));
+}
+
+function loadImageElement(image) {
+  if (!image || image.dataset.loaded === '1') return;
+  const realSrc = image.dataset.realSrc || image.src;
+  if (!realSrc || realSrc === PLACEHOLDER_IMAGE) return;
+  image.src = realSrc;
+  image.dataset.loaded = '1';
+}
+
+function scheduleBackgroundImageLoads(images) {
+  images.forEach((image, index) => {
+    const delay = 120 + (index % 8) * 140;
+    setTimeout(() => {
+      loadImageElement(image);
+    }, delay);
+  });
+}
+
 function renderGames(query){
   games = normalizeGames(games);
   const list = document.getElementById('list');
@@ -91,37 +113,44 @@ function renderGames(query){
 
   list.innerHTML = filteredGames.length ? '' : `<p class="empty-state">${normalizedQuery ? 'Aramanızla eşleşen oyun bulunamadı.' : 'Henüz oyun eklenmemiş.'}</p>`;
 
-  const observer = new IntersectionObserver((entries, currentObserver) => {
-    entries.forEach(entry => {
-      if (!entry.isIntersecting) return;
-      const image = entry.target;
-      if (image.dataset.loaded === '1') {
-        currentObserver.unobserve(image);
-        return;
-      }
-      image.src = image.dataset.realSrc || image.src;
-      image.dataset.loaded = '1';
-      currentObserver.unobserve(image);
-    });
-  }, { rootMargin: '200px' });
+  const priorityLimit = getInitialPriorityCount(filteredGames.length);
+  const backgroundImages = [];
 
-  filteredGames.forEach(g => {
+  filteredGames.forEach((g, index) => {
     const el = document.createElement('a');
     el.className = 'card';
     el.href = `game.html?id=${encodeURIComponent(g.id)}`;
+    el.addEventListener('click', () => {
+      try {
+        sessionStorage.setItem('furkan-game-preview', JSON.stringify({
+          id: g.id,
+          title: g.title || 'Oyun',
+          category: g.category || 'Oyun',
+          image: g.image || fallbackImage(g.category),
+          content: g.content || '',
+        }));
+      } catch (error) {
+        // ignore
+      }
+    });
 
     const image = document.createElement('img');
     image.className = 'game-card-image';
     image.src = PLACEHOLDER_IMAGE;
     image.dataset.realSrc = g.image || `/api/games/${encodeURIComponent(g.id)}/image`;
     image.dataset.fallback = fallbackImage(g.category);
-    image.loading = 'lazy';
+    image.loading = index < priorityLimit ? 'eager' : 'lazy';
     image.decoding = 'async';
     image.alt = g.title || 'Oyun görseli';
     image.addEventListener('error', () => {
       image.src = image.dataset.fallback || fallbackImage(g.category);
     });
-    observer.observe(image);
+
+    if (index < priorityLimit) {
+      loadImageElement(image);
+    } else {
+      backgroundImages.push(image);
+    }
 
     const body = document.createElement('span');
     body.className = 'game-card-body';
@@ -131,6 +160,12 @@ function renderGames(query){
     el.appendChild(body);
     list.appendChild(el);
   });
+
+  if (backgroundImages.length) {
+    setTimeout(() => {
+      scheduleBackgroundImageLoads(backgroundImages);
+    }, 150);
+  }
 }
 
 function fallbackImage(category){
