@@ -220,8 +220,9 @@ app.get('/api/games', async (req, res) => {
     const summaryOnly = req.query.summary === '1';
     const includeImages = req.query.images !== '0';
     const fresh = req.query.fresh === '1';
-    if (summaryOnly && includeImages && !fresh) {
-      res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=86400');
+    const canUseCache = summaryOnly && includeImages && !fresh;
+    if (canUseCache) {
+      res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=86400');
     } else {
       res.setHeader('Cache-Control', 'no-store');
     }
