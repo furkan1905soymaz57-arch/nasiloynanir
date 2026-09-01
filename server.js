@@ -87,13 +87,18 @@ function sortGames(games) {
 }
 
 async function listGames(summaryOnly = false, includeImages = true, options = {}) {
-  const { allowFallback = true, timeoutMs = 5000 } = options;
+  const { allowFallback = true, timeoutMs = 5000, limit, offset = 0 } = options;
+  const safeLimit = Number.isFinite(Number(limit)) ? Math.max(0, Number(limit)) : null;
+  const safeOffset = Number.isFinite(Number(offset)) ? Math.max(0, Number(offset)) : 0;
+
   if (supabase) {
     const columns = summaryOnly
       ? (includeImages ? 'id,title,category,image' : 'id,title,category')
       : '*';
+
     let query = supabase.from('games').select(columns).order('title', { ascending: true, nullsFirst: false });
     if (summaryOnly && timeoutMs) query = query.abortSignal(AbortSignal.timeout(timeoutMs));
+    if (safeLimit !== null) query = query.range(safeOffset, safeOffset + safeLimit - 1);
 
     const { data, error } = await query;
     if (!error) return sortGames(data || []);
@@ -103,12 +108,17 @@ async function listGames(summaryOnly = false, includeImages = true, options = {}
   }
 
   const db = readDB();
-  const games = summaryOnly
+  let games = summaryOnly
     ? (db.games || []).map(({ id, title, category, image }) => (
         includeImages ? { id, title, category, image } : { id, title, category }
       ))
     : (db.games || []);
-  return sortGames(games);
+
+  games = sortGames(games);
+  if (safeLimit !== null) {
+    return games.slice(safeOffset, safeOffset + safeLimit);
+  }
+  return games;
 }
 
 async function getGameById(id) {
@@ -220,7 +230,9 @@ app.get('/api/games', async (req, res) => {
     const summaryOnly = req.query.summary === '1';
     const includeImages = req.query.images !== '0';
     const fresh = req.query.fresh === '1';
-    const canUseCache = summaryOnly && includeImages && !fresh;
+    const limit = Number.parseInt(req.query.limit, 10);
+    const offset = Number.parseInt(req.query.offset, 10);
+    const canUseCache = summaryOnly && includeImages && !fresh && !Number.isFinite(limit) && !Number.isFinite(offset);
     if (canUseCache) {
       res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=86400');
     } else {
@@ -229,6 +241,8 @@ app.get('/api/games', async (req, res) => {
     res.json(await listGames(summaryOnly, includeImages, {
       allowFallback: !fresh,
       timeoutMs: fresh ? 25000 : 5000,
+      limit: Number.isFinite(limit) ? limit : undefined,
+      offset: Number.isFinite(offset) ? offset : 0,
     }));
   } catch (error) {
     console.error('LOAD_GAMES_ERROR', error);
