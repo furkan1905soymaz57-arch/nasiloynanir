@@ -1,16 +1,13 @@
 let games = [];
-const GAMES_CACHE_KEY = 'furkan-games-cache-v1';
-const GAMES_CACHE_TTL = 10 * 60 * 1000;
-const INITIAL_PAGE_SIZE = 12;
-let isLoadingMore = false;
+const STORAGE_KEY = 'furkan-games-cache';
+const PLACEHOLDER_IMAGE = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 420"><rect width="600" height="420" fill="#f5f2ea"/><circle cx="300" cy="160" r="110" fill="#e5dcc0"/><rect x="120" y="280" width="360" height="20" rx="10" fill="#d8d0bd"/><rect x="160" y="315" width="280" height="16" rx="8" fill="#ddd5c3"/></svg>');
 
 function readGamesCache() {
   try {
-    const raw = sessionStorage.getItem(GAMES_CACHE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (!parsed || !Array.isArray(parsed.games) || !Number.isFinite(parsed.savedAt)) return null;
-    return parsed;
+    return Array.isArray(parsed) ? parsed : null;
   } catch (error) {
     return null;
   }
@@ -18,47 +15,9 @@ function readGamesCache() {
 
 function writeGamesCache(data) {
   try {
-    sessionStorage.setItem(GAMES_CACHE_KEY, JSON.stringify({
-      savedAt: Date.now(),
-      games: data,
-    }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch (error) {
-    // Session storage may be unavailable; ignore silently.
-  }
-}
-
-async function fetchGamesPage(offset = 0, limit = INITIAL_PAGE_SIZE) {
-  const params = new URLSearchParams({ summary: '1', images: '1' });
-  if (Number.isFinite(limit) && limit > 0) params.set('limit', String(limit));
-  if (Number.isFinite(offset) && offset > 0) params.set('offset', String(offset));
-
-  const res = await fetch(`/api/games?${params.toString()}`, { cache: 'default' });
-  if (!res.ok) throw new Error(`API ${res.status}`);
-
-  const data = await res.json();
-  if (!Array.isArray(data)) throw new Error('Geçersiz API yanıtı');
-  return data;
-}
-
-async function loadMoreInBackground() {
-  if (isLoadingMore || games.length === 0) return;
-  isLoadingMore = true;
-  try {
-    const nextBatch = await fetchGamesPage(games.length, INITIAL_PAGE_SIZE);
-    if (!nextBatch.length) return;
-
-    games = [...games, ...nextBatch];
-    writeGamesCache(games);
-    const searchInput = document.getElementById('game-search-input');
-    renderGames(searchInput ? searchInput.value : '');
-
-    if (nextBatch.length === INITIAL_PAGE_SIZE) {
-      setTimeout(loadMoreInBackground, 250);
-    }
-  } catch (error) {
-    console.warn('Ek oyunlar yüklenemedi:', error);
-  } finally {
-    isLoadingMore = false;
+    // ignore
   }
 }
 
@@ -67,52 +26,82 @@ async function load(){
   const searchInput = document.getElementById('game-search-input');
   list.innerHTML = '<p class="empty-state">Oyunlar yükleniyor...</p>';
 
-  const cached = readGamesCache();
-  if (cached && Date.now() - cached.savedAt < GAMES_CACHE_TTL) {
-    games = cached.games;
+  const cachedGames = readGamesCache();
+  if (cachedGames && cachedGames.length) {
+    games = cachedGames;
     renderGames(searchInput ? searchInput.value : '');
     searchInput?.addEventListener('input', event => renderGames(event.target.value));
     return;
   }
 
-  searchInput?.addEventListener('input', event => renderGames(event.target.value));
-
   try {
-    const initialGames = await fetchGamesPage(0, INITIAL_PAGE_SIZE);
-    games = initialGames;
+    const res = await fetch('/api/games?summary=1&images=0', { cache: 'no-store' });
+    if (!res.ok) throw new Error(`API ${res.status}`);
+
+    const data = await res.json();
+    if (!Array.isArray(data)) throw new Error('Geçersiz API yanıtı');
+
+    games = data;
     writeGamesCache(games);
     renderGames(searchInput ? searchInput.value : '');
-    loadMoreInBackground();
+    searchInput?.addEventListener('input', event => renderGames(event.target.value));
   } catch (error) {
     console.error('Oyunlar yüklenemedi:', error);
-    if (games.length === 0) {
-      list.innerHTML = '<p class="empty-state">Oyunlar yüklenemedi. Lütfen sayfayı yenileyin.</p>';
-    }
+    list.innerHTML = '<p class="empty-state">Oyunlar yüklenemedi. Lütfen sayfayı yenileyin.</p>';
   }
 }
 
 function renderGames(query){
   const list = document.getElementById('list');
   const normalizedQuery = (query || '').trim().toLocaleLowerCase('tr-TR');
-  const filteredGames = [...games]
+  const filteredGames = games
     .filter(game => `${game.title} ${game.category || ''}`.toLocaleLowerCase('tr-TR').includes(normalizedQuery))
     .sort((first, second) => first.title.localeCompare(second.title, 'tr', {sensitivity:'base'}));
 
   list.innerHTML = filteredGames.length ? '' : `<p class="empty-state">${normalizedQuery ? 'Aramanızla eşleşen oyun bulunamadı.' : 'Henüz oyun eklenmemiş.'}</p>`;
-  filteredGames.forEach(g=>{
-    const el = document.createElement('a'); el.className='card'; el.href=`game.html?id=${encodeURIComponent(g.id)}`;
-    const image = g.image || fallbackImage(g.category);
-    el.innerHTML = `<img class="game-card-image" src="${escapeHtml(image)}" data-fallback="${escapeHtml(fallbackImage(g.category))}" loading="lazy" decoding="async" fetchpriority="low" referrerpolicy="no-referrer" alt="${escapeHtml(g.title)}"><span class="game-card-body"><strong>${escapeHtml(g.title)}</strong><span class="game-card-category">${escapeHtml(g.category||'Oyun')}</span></span>`;
-    const imageElement = el.querySelector('.game-card-image');
-    imageElement.addEventListener('error', () => {
-      if (imageElement.dataset.fallback) {
-        imageElement.src = imageElement.dataset.fallback;
-        delete imageElement.dataset.fallback;
+
+  const observer = new IntersectionObserver((entries, currentObserver) => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      const image = entry.target;
+      if (image.dataset.loaded === '1') {
+        currentObserver.unobserve(image);
+        return;
       }
+      image.src = image.dataset.realSrc || image.src;
+      image.dataset.loaded = '1';
+      currentObserver.unobserve(image);
     });
+  }, { rootMargin: '200px' });
+
+  filteredGames.forEach(g => {
+    const el = document.createElement('a');
+    el.className = 'card';
+    el.href = `game.html?id=${encodeURIComponent(g.id)}`;
+
+    const image = document.createElement('img');
+    image.className = 'game-card-image';
+    image.src = PLACEHOLDER_IMAGE;
+    image.dataset.realSrc = g.image || `/api/games/${encodeURIComponent(g.id)}/image`;
+    image.dataset.fallback = fallbackImage(g.category);
+    image.loading = 'lazy';
+    image.decoding = 'async';
+    image.alt = g.title || 'Oyun görseli';
+    image.addEventListener('error', () => {
+      image.src = image.dataset.fallback || fallbackImage(g.category);
+    });
+    observer.observe(image);
+
+    const body = document.createElement('span');
+    body.className = 'game-card-body';
+    body.innerHTML = `<strong>${escapeHtml(g.title)}</strong><span class="game-card-category">${escapeHtml(g.category || 'Oyun')}</span>`;
+
+    el.appendChild(image);
+    el.appendChild(body);
     list.appendChild(el);
-  })
+  });
 }
+
 function fallbackImage(category){
   const images = {
     tavla:'https://images.unsplash.com/photo-1606167668584-78701c57f13d?auto=format&fit=crop&w=1200&q=80',
@@ -120,5 +109,7 @@ function fallbackImage(category){
   };
   return images[(category || '').toLowerCase()] || 'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?auto=format&fit=crop&w=1200&q=80';
 }
+
 function escapeHtml(s){if(!s) return ''; return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;')}
+
 load()
