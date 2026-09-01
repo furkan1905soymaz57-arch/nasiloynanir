@@ -95,8 +95,11 @@ function loadImageElement(image) {
 }
 
 function scheduleBackgroundImageLoads(images) {
+  const batchSize = 5;
   images.forEach((image, index) => {
-    const delay = 120 + (index % 8) * 140;
+    const batchIndex = Math.floor(index / batchSize);
+    const stepInBatch = index % batchSize;
+    const delay = 180 + batchIndex * 500 + stepInBatch * 140;
     setTimeout(() => {
       loadImageElement(image);
     }, delay);

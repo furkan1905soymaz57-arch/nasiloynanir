@@ -22,10 +22,8 @@ function renderGame(game) {
 async function loadGame(){
   if(!gameId){ showError('Oyun bulunamadı.'); return; }
 
+  showLoading();
   const previewGame = readPreviewGame();
-  if (previewGame && previewGame.id === gameId) {
-    renderGame(previewGame);
-  }
 
   try{
     const response = await fetch(`/api/games/${encodeURIComponent(gameId)}`);
@@ -40,7 +38,11 @@ async function loadGame(){
     }));
     renderGame(game);
   }catch(error){
-    if (!previewGame || previewGame.id !== gameId) showError(error.message);
+    if (previewGame && previewGame.id === gameId) {
+      renderGame(previewGame);
+      return;
+    }
+    showError(error.message);
   }
 }
 
@@ -57,6 +59,18 @@ function fallbackImage(category){
     kart:'https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?auto=format&fit=crop&w=1200&q=80'
   };
   return images[(category || '').toLowerCase()] || 'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?auto=format&fit=crop&w=1200&q=80';
+}
+
+function showLoading(){
+  detail.innerHTML = `
+    <div class="game-loading" aria-live="polite" aria-busy="true">
+      <div class="game-loading-badge">
+        <span class="game-loading-spinner" aria-hidden="true"></span>
+        <span>Oyun açılıyor</span>
+        <span class="dot" aria-hidden="true"></span>
+      </div>
+    </div>
+  `;
 }
 
 function showError(message){ detail.innerHTML = `<p class="empty-state">${escapeHtml(message)}</p>`; }

@@ -96,6 +96,47 @@ body{margin:0;font-family:Poppins,Trebuchet MS,Segoe UI,Arial,sans-serif;backgro
 .admin-page #form-status{font-size:12px;margin-top:10px;color:#d9fef6}
 .admin-page:before{content:"♠   ♥        ♦   ♣          ⚄   ♟       🎲   ♛\A      ♦   ♣   ♠       ⚂   ♥          ♟   🎲   ♦\A♣       ♠   ⚄       ♥   ♦          ♜   ♟   ♣\A   ♥   ♦          ♛   ♠   ♣       🎲   ⚂   ♟\A♟   ♣       ♥   ⚄   ♠          ♦   ♛   ♣   🎲\A      ♦   ♠   ♟       ♥   ♣   ⚅       ♦   ♜   🎲\A♥   ♛       ♣   ♦          ⚄   ♟       ♠   ♥   ◇";white-space:pre;color:rgba(181,219,220,.17);font-size:45px;line-height:3.65;word-spacing:25px;transform:rotate(-3deg) scale(1.12);transform-origin:center;text-shadow:0 0 17px rgba(55,217,215,.32)}
 .empty-state{color:var(--muted)}
+.game-loading{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:260px;
+  padding:28px 16px;
+  border:1px solid rgba(66,230,196,.25);
+  border-radius:14px;
+  background:linear-gradient(180deg,rgba(14,31,56,.92),rgba(8,20,38,.9));
+  box-shadow:0 12px 30px rgba(12,24,40,.22), inset 0 0 18px rgba(66,230,196,.08);
+}
+.game-loading-badge{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:14px 18px;
+  border-radius:999px;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
+  color:#e7fbff;
+  font-weight:700;
+  letter-spacing:.4px;
+}
+.game-loading-spinner{
+  width:18px;
+  height:18px;
+  border-radius:50%;
+  border:2px solid rgba(255,255,255,.2);
+  border-top-color:var(--accent);
+  animation:spin .9s linear infinite;
+  box-shadow:0 0 12px rgba(66,230,196,.45);
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.game-loading-badge .dot{
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:linear-gradient(145deg,#72f9e0,#59d7ff);
+  animation:pulse .9s ease-in-out infinite alternate;
+}
+@keyframes pulse{0%{transform:scale(.75);opacity:.4}100%{transform:scale(1.1);opacity:1}}
 .field-hint{display:block;color:var(--muted);font-size:12px;margin:0 0 10px}
 .panel{flex:1;min-width:320px;background:rgba(255,255,255,0.02);padding:16px;border-radius:12px}
 input,textarea{width:100%;padding:8px;margin:8px 0;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
