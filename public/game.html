@@ -11,7 +11,7 @@
     <a class="brand" href="index.html" aria-label="Nasıl Oynanır ana sayfa">
       <img src="logo.svg" alt="Nasıl Oynanır" />
     </a>
-    <a class="btn" href="index.html">Oyunlara Dön</a>
+    <a class="btn" href="index.html" onclick="if (window.history.length > 1) { event.preventDefault(); history.back(); } else { window.location.href='index.html'; }">Oyunlara Dön</a>
   </header>
   <main id="game-detail" class="game-detail-page">
     <p class="empty-state">Oyun yükleniyor...</p>

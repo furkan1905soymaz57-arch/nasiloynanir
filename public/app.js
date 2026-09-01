@@ -1,5 +1,6 @@
 let games = [];
 const STORAGE_KEY = 'furkan-games-cache';
+const HOME_STATE_KEY = 'furkan-home-page-state';
 const LEGACY_STORAGE_KEYS = ['furkan-games-cache-v1', 'furkan-games-cache-v2'];
 const PLACEHOLDER_IMAGE = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 420"><rect width="600" height="420" fill="#f5f2ea"/><circle cx="300" cy="160" r="110" fill="#e5dcc0"/><rect x="120" y="280" width="360" height="20" rx="10" fill="#d8d0bd"/><rect x="160" y="315" width="280" height="16" rx="8" fill="#ddd5c3"/></svg>');
 
@@ -51,10 +52,74 @@ function writeGamesCache(data) {
   }
 }
 
+function readHomeState() {
+  try {
+    const sessionRaw = sessionStorage.getItem(HOME_STATE_KEY);
+    if (sessionRaw) {
+      const parsed = JSON.parse(sessionRaw);
+      if (parsed && Array.isArray(parsed.games) && parsed.games.length) return parsed;
+    }
+
+    const raw = localStorage.getItem(HOME_STATE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.games) || !parsed.games.length) return null;
+    return parsed;
+  } catch (error) {
+    return null;
+  }
+}
+
+function saveHomeState(query = '') {
+  try {
+    const payload = {
+      games: normalizeGames(games),
+      query: typeof query === 'string' ? query : ''
+    };
+    sessionStorage.setItem(HOME_STATE_KEY, JSON.stringify(payload));
+    localStorage.setItem(HOME_STATE_KEY, JSON.stringify(payload));
+  } catch (error) {
+    // ignore
+  }
+}
+
+function attachHomeNavigationGuard() {
+  document.addEventListener('click', event => {
+    const target = event.target.closest ? event.target.closest('a[href="index.html"]') : null;
+    if (!target) return;
+
+    const inputValue = document.getElementById('game-search-input')?.value || '';
+    saveHomeState(inputValue);
+    if (window.history.length > 1) {
+      event.preventDefault();
+      history.back();
+    }
+  });
+
+  document.addEventListener('click', event => {
+    const target = event.target.closest ? event.target.closest('a[href="contact.html"]') : null;
+    if (!target) return;
+
+    const inputValue = document.getElementById('game-search-input')?.value || '';
+    saveHomeState(inputValue);
+  });
+}
+
 async function load(){
   const list = document.getElementById('list');
   const searchInput = document.getElementById('game-search-input');
   list.innerHTML = '<p class="empty-state">Oyunlar yükleniyor...</p>';
+
+  const savedHomeState = readHomeState();
+  if (savedHomeState && savedHomeState.games && savedHomeState.games.length) {
+    games = savedHomeState.games;
+    if (searchInput) {
+      searchInput.value = savedHomeState.query || '';
+    }
+    renderGames(savedHomeState.query || '');
+    searchInput?.addEventListener('input', event => renderGames(event.target.value));
+    return;
+  }
 
   const cachedGames = readGamesCache();
   if (cachedGames && cachedGames.length) {
@@ -169,7 +234,21 @@ function renderGames(query){
       scheduleBackgroundImageLoads(backgroundImages);
     }, 150);
   }
+
+  saveHomeState(normalizedQuery);
 }
+
+window.addEventListener('pagehide', () => {
+  saveHomeState(document.getElementById('game-search-input')?.value || '');
+});
+window.addEventListener('beforeunload', () => {
+  saveHomeState(document.getElementById('game-search-input')?.value || '');
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    saveHomeState(document.getElementById('game-search-input')?.value || '');
+  }
+});
 
 function fallbackImage(category){
   const images = {
@@ -181,4 +260,5 @@ function fallbackImage(category){
 
 function escapeHtml(s){if(!s) return ''; return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;')}
 
-load()
+attachHomeNavigationGuard();
+load();

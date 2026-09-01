@@ -1,5 +1,23 @@
 const detail = document.getElementById('game-detail');
 const gameId = new URLSearchParams(window.location.search).get('id');
+const HOME_STATE_KEY = 'furkan-home-page-state';
+
+function saveHomeStateFromCache() {
+  try {
+    const cachedGames = JSON.parse(localStorage.getItem('furkan-games-cache') || '[]');
+    const queryValue = localStorage.getItem(HOME_STATE_KEY) ? JSON.parse(localStorage.getItem(HOME_STATE_KEY)).query || '' : '';
+    const payload = {
+      games: Array.isArray(cachedGames) ? cachedGames : [],
+      query: queryValue
+    };
+    if (payload.games.length) {
+      localStorage.setItem(HOME_STATE_KEY, JSON.stringify(payload));
+      sessionStorage.setItem(HOME_STATE_KEY, JSON.stringify(payload));
+    }
+  } catch (error) {
+    // ignore
+  }
+}
 
 function readPreviewGame() {
   try {
@@ -75,4 +93,12 @@ function showLoading(){
 
 function showError(message){ detail.innerHTML = `<p class="empty-state">${escapeHtml(message)}</p>`; }
 function escapeHtml(value){ return String(value || '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;'); }
+
+document.addEventListener('click', event => {
+  const link = event.target.closest('a[href="index.html"]');
+  if (link) saveHomeStateFromCache();
+});
+window.addEventListener('beforeunload', saveHomeStateFromCache);
+window.addEventListener('pagehide', saveHomeStateFromCache);
+
 loadGame();
