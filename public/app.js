@@ -1,21 +1,51 @@
 let games = [];
 const STORAGE_KEY = 'furkan-games-cache';
+const LEGACY_STORAGE_KEYS = ['furkan-games-cache-v1', 'furkan-games-cache-v2'];
 const PLACEHOLDER_IMAGE = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 420"><rect width="600" height="420" fill="#f5f2ea"/><circle cx="300" cy="160" r="110" fill="#e5dcc0"/><rect x="120" y="280" width="360" height="20" rx="10" fill="#d8d0bd"/><rect x="160" y="315" width="280" height="16" rx="8" fill="#ddd5c3"/></svg>');
 
+function normalizeGames(items) {
+  if (!Array.isArray(items)) return [];
+  const seen = new Set();
+  return items.filter(game => {
+    if (!game || !game.id) return true;
+    const key = String(game.id);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function clearLegacyCaches() {
+  LEGACY_STORAGE_KEYS.forEach(key => {
+    try { localStorage.removeItem(key); } catch (error) {}
+  });
+}
+
 function readGamesCache() {
+  clearLegacyCaches();
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : null;
+    if (!Array.isArray(parsed) || parsed.length < 3) {
+      localStorage.removeItem(STORAGE_KEY);
+      return null;
+    }
+    const normalized = normalizeGames(parsed);
+    if (normalized.length !== parsed.length) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+    }
+    return normalized;
   } catch (error) {
+    try { localStorage.removeItem(STORAGE_KEY); } catch (removeError) {}
     return null;
   }
 }
 
 function writeGamesCache(data) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    const normalized = normalizeGames(data);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
   } catch (error) {
     // ignore
   }
@@ -41,7 +71,7 @@ async function load(){
     const data = await res.json();
     if (!Array.isArray(data)) throw new Error('Geçersiz API yanıtı');
 
-    games = data;
+    games = normalizeGames(data);
     writeGamesCache(games);
     renderGames(searchInput ? searchInput.value : '');
     searchInput?.addEventListener('input', event => renderGames(event.target.value));
@@ -52,6 +82,7 @@ async function load(){
 }
 
 function renderGames(query){
+  games = normalizeGames(games);
   const list = document.getElementById('list');
   const normalizedQuery = (query || '').trim().toLocaleLowerCase('tr-TR');
   const filteredGames = games
